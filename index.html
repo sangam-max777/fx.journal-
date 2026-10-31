@@ -1,70 +1,388 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>FX Trading Journal</title><style>
-:root{--bg:#f1f3ef;--c:#fff;--t:#17201c;--m:#66706b;--b:#dfe3dd;--a:#9a6408;--g:#15803d;--r:#c2362b;--gs:#d9f0e1;--rs:#f9dcd8;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1311;--c:#181d1a;--t:#e7ece8;--m:#97a29b;--b:#2a322d;--a:#e2b04a;--g:#4cc47c;--r:#ff7b70;--gs:#143324;--rs:#43201c;color-scheme:dark}}
-:root[data-theme=dark]{--bg:#0f1311;--c:#181d1a;--t:#e7ece8;--m:#97a29b;--b:#2a322d;--a:#e2b04a;--g:#4cc47c;--r:#ff7b70;--gs:#143324;--rs:#43201c;color-scheme:dark}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--c)}
-header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 18px;background:var(--c);border-bottom:1px solid var(--b);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
-h1{font:700 18px Georgia,"Times New Roman",serif;margin:0}h3{margin:0 0 8px;font-size:13.5px}.tb{display:flex;gap:6px;flex-wrap:wrap}
-main{max-width:1200px;margin:auto;padding:14px}
-.card{background:var(--c);border:1px solid var(--b);border-radius:10px;padding:14px;min-width:0}
-.g{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-bottom:12px}.k{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:12px}
-.kp small{color:var(--m);font-size:12px}.kp b{font:700 24px Georgia,serif;display:block}.kp i{font-style:normal;color:var(--m);font-size:11.5px}
-.pos{color:var(--g)}.neg{color:var(--r)}.m{color:var(--m)}.sc{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--b);white-space:nowrap}th:first-child,td:first-child{text-align:left}th{color:var(--m);font-weight:600}tr[data-i]{cursor:pointer}
-svg{width:100%;height:auto;display:block}.ax{font-size:10px;fill:var(--m)}
-input,select,textarea,button{font:inherit;color:var(--t);background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:6px 8px}button{cursor:pointer;background:var(--c)}button.pri{background:var(--a);color:#fff;border-color:var(--a)}
-:root[data-theme=dark] button.pri,.dk button.pri{color:#111}
-label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--m)}label b{color:var(--r)}.ck{flex-direction:row;align-items:center;color:var(--t);font-size:13px;padding:3px 0}
-.fl{display:flex;flex-wrap:wrap;gap:10px;align-items:end}fieldset{border:1px solid var(--b);border-radius:10px;margin:0 0 12px;padding:12px}legend{font-weight:700}
-.fg{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.fg .w{grid-column:1/-1}.fg input,.fg select,.fg textarea,textarea{width:100%}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cal i{font-style:normal;text-align:center;color:var(--m);font-size:11px}.cal b{min-height:52px;border:1px solid var(--b);border-radius:8px;padding:3px 5px;font-size:11px}.cal b:empty{border:0}.cal u{display:block;text-decoration:none;color:var(--m);font-weight:400}.cal .p{background:var(--gs)}.cal .n{background:var(--rs)}
-.warn{background:var(--rs);border-radius:8px;padding:8px 10px;margin-bottom:12px}.tag{display:inline-block;border:1px solid var(--b);border-radius:99px;padding:1px 9px;margin:2px;font-size:12px}
-.gd p,.gd li{max-width:90ch}.gd td{white-space:normal;text-align:left}
-</style></head><body><header><h1>FX Journal</h1><nav class="tb"></nav><span class="m">Record-keeping and review only. It never gives trade signals.</span></header><main id="v"></main><script>
-const $=s=>document.querySelector(s),K="fxj1",K2="fxj1r",esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])),n=v=>v===""||v==null||isNaN(+v)?null:+v;
-const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),today=()=>ymd(new Date());
-let D=[],RS={chk:{},wk:{}},tab="dash",flt={},ed=null,V=[],cm=[new Date().getFullYear(),new Date().getMonth()],rd=today();
-try{D=JSON.parse(localStorage.getItem(K)||"[]");RS=JSON.parse(localStorage.getItem(K2)||"null")||RS}catch(e){}
-const sv=()=>{try{localStorage.setItem(K,JSON.stringify(D));localStorage.setItem(K2,JSON.stringify(RS))}catch(e){}};
-const fm=x=>x==null?"–":(x<0?"−$":"$")+Math.abs(x).toFixed(2),fr=x=>x==null?"–":(x<0?"−":x>0?"+":"")+Math.abs(x).toFixed(2)+"R",fp=x=>x==null?"–":Math.round(x*100)+"%",cl=x=>x>0?"pos":x<0?"neg":"";
-const SEL={pair:["XAUUSD","EURUSD","GBPUSD","USDJPY","GBPJPY","Other"],dir:["Long","Short"],tf:["5m","15m","30m"],ses:["Asia","London","New York","Overlap"],adh:["Yes","Partial","No"],exq:["1","2","3","4","5"],emo:["Calm","Confident","Hesitant","FOMO","Fear","Revenge","Bored","Overconfident"]};
-const F=[["date","Date","date",1,0],["time","Time","time",1,0],["pair","Market","sel",1,0],["dir","Direction","sel",1,0],["setup","Setup","dl",1,0],["tf","Timeframe","sel",1,0],["ses","Session","sel",1,0],["thesis","Thesis","area",1,0],["crit","Setup criteria","area",0,0],["inv","Invalidation point","text",1,0],["ctx","Market context","area",0,0],["pe","Planned entry","num",1,0],["ps","Planned stop","num",1,0],["pt","Planned target","num",1,0],["risk","Planned risk ($)","num",1,0],["size","Size (lots)","num",1,0],["shot","Screenshot link","text",1,0],["ae","Actual entry","num",1,1],["ax","Actual exit (avg)","num",1,1],["gross","Gross P&L ($)","num",1,1],["fees","Fees + swap ($)","num",1,1],["adh","Followed plan?","sel",1,2],["exq","Execution 1–5","sel",1,2],["emo","Emotional state","sel",0,2],["dev","Deviations","area",0,2],["lesson","Lesson","area",1,2],["fup","Follow-up action","text",0,2]];
-const SECT=["Pre-trade plan","Execution (leave gross P&L blank while the trade is open)","Post-trade review"],TP={num:"number",dl:"text",text:"text",date:"date",time:"time"};
-const enrich=t=>{const g=n(t.gross),k=n(t.risk),c=g!=null,x=c?g-(n(t.fees)||0):null;return{...t,closed:c,net:x,R:c&&k>0?x/k:null,mo:(t.date||"").slice(0,7)}};
-const view=()=>D.map(enrich).filter(t=>t.closed&&(!flt.from||t.date>=flt.from)&&(!flt.to||t.date<=flt.to)&&["pair","setup","dir","tf"].every(k=>!flt[k]||t[k]===flt[k])).sort((a,b)=>((a.date||"")+(a.time||"")).localeCompare((b.date||"")+(b.time||"")));
-const cv=a=>{let c=0,p=0;const e=[],d=[];a.forEach(x=>{c+=x;p=Math.max(p,c);e.push(c);d.push(c-p)});return{e,d}};
-function stats(a){const w=a.filter(t=>t.net>0),l=a.filter(t=>t.net<0),S=x=>x.reduce((p,t)=>p+t.net,0),R=a.filter(t=>t.R!=null).map(t=>t.R),sr=R.reduce((p,x)=>p+x,0),gw=S(w),gl=-S(l);return{n:a.length,w:w.length,l:l.length,net:S(a),R:sr,nr:R.length,wr:a.length?w.length/a.length:null,aw:w.length?gw/w.length:null,al:l.length?gl/l.length:null,ex:R.length?sr/R.length:null,pf:gl>0?gw/gl:gw>0?Infinity:null,ddR:Math.min(0,...cv(R).d),ddD:Math.min(0,...cv(a.map(t=>t.net)).d)}}
-function line(v,col){if(v.length<2)return'<p class="m">Needs 2+ trades with valid R.</p>';const W=600,H=170,p=26,mx=Math.max(0,...v),mn=Math.min(0,...v),rg=(mx-mn)||1,sx=i=>p+i*(W-2*p)/(v.length-1),sy=y=>p+(mx-y)*(H-2*p)/rg,pts=v.map((y,i)=>sx(i)+","+sy(y)).join(" ");return`<svg viewBox="0 0 ${W} ${H}"><line x1="${p}" x2="${W-p}" y1="${sy(0)}" y2="${sy(0)}" stroke="var(--b)"/><polygon points="${sx(0)},${sy(0)} ${pts} ${sx(v.length-1)},${sy(0)}" style="fill:var(${col});opacity:.15"/><polyline points="${pts}" fill="none" style="stroke:var(${col})" stroke-width="2"/><text class="ax" x="${p}" y="12">${mx.toFixed(1)}</text><text class="ax" x="${p}" y="${H-6}">${mn.toFixed(1)}</text></svg>`}
-function bars(L,A,C){const W=600,H=170,p=22,mx=Math.max(...A.map(Math.abs),1e-9),z=C?H-p:H/2,sc=(C?H-2*p-8:H/2-p)/mx,w=(W-2*p)/L.length;return`<svg viewBox="0 0 ${W} ${H}">`+A.map((v,i)=>{const x=p+i*w,h=Math.abs(v)*sc;return`<rect x="${x+w*.15}" y="${v>=0?z-h:z}" width="${w*.7}" height="${h}" style="fill:var(${C?C[i]:v>=0?"--g":"--r"})"/><text class="ax" x="${x+w/2}" y="${v>=0?z-h-3:z+h+10}" text-anchor="middle">${+v.toFixed(0)}</text><text class="ax" x="${x+w/2}" y="${H-6}" text-anchor="middle">${L[i]}</text>`}).join("")+"</svg>"}
-const kp=(l,v,s,c)=>`<div class="card kp"><small>${l}</small><b class="${c||""}">${v}</b><i>${s||"&nbsp;"}</i></div>`;
-function brk(t,k){const g={};V.forEach(x=>(g[x[k]||"—"]??=[]).push(x));return`<div class="card sc"><h3>${t} <span class="m">(⚠ = fewer than 20 trades)</span></h3><table><tr><th></th><th>n</th><th>Win</th><th>Net $</th><th>Exp R</th></tr>${Object.entries(g).map(([a,b])=>{const s=stats(b);return`<tr><td>${esc(a)}</td><td>${s.n}${s.n<20?" ⚠":""}</td><td>${fp(s.wr)}</td><td class="${cl(s.net)}">${fm(s.net)}</td><td class="${cl(s.ex)}">${fr(s.ex)}</td></tr>`}).join("")||'<tr><td class="m">No data</td></tr>'}</table></div>`}
-function cal(){const[y,o]=cm,P=y+"-"+String(o+1).padStart(2,"0"),dim=new Date(y,o+1,0).getDate(),off=(new Date(y,o,1).getDay()+6)%7,by={},ms=stats(V.filter(t=>t.mo==P));V.forEach(t=>(by[t.date]??=[]).push(t));let h="";for(let d=1;d<=dim;d++){const a=by[P+"-"+String(d).padStart(2,"0")],s=a&&stats(a);h+=`<b class="${s?s.net>0?"p":s.net<0?"n":"":""}"><u>${d}</u>${s?(s.nr?fr(s.R):fm(s.net))+"<br>"+a.length+" trade"+(a.length>1?"s":""):""}</b>`}
-return`<div class="card" style="margin-bottom:12px"><div class="fl"><button onclick="cmv(-1)">‹</button><h3 style="margin:0">${new Date(y,o,1).toLocaleString("en",{month:"long",year:"numeric"})}</h3><button onclick="cmv(1)">›</button><span class="m">Month: ${fm(ms.net)} · ${ms.nr?fr(ms.R):"–"} · ${ms.n} trades</span></div><div class="cal" style="margin-top:8px">${[..."MTWTFSS"].map(d=>`<i>${d}</i>`).join("")}${"<b></b>".repeat(off)}${h}</div></div>`}
-const cmv=d=>{cm=[cm[0]+Math.floor((cm[1]+d)/12),(cm[1]+d+12)%12];go()};
-function dq(){const A=D.map(enrich);let ms={},cells=0,ok=0,open=0,nor=0,nrv=0;const bad=[];A.forEach(t=>{let b=0;F.filter(f=>f[3]&&(t.closed||f[4]==0)).forEach(f=>{cells++;if(String(t[f[0]]??"")===""){ms[f[1]]=(ms[f[1]]||0)+1;b++}else ok++});if(!t.closed)open++;if(!(n(t.risk)>0))nor++;if(t.closed&&(!t.adh||!t.lesson))nrv++;if(b)bad.push([t,b])});
-return`<div class="card"><h3>Data quality</h3><div class="fl"><b style="font:700 24px Georgia,serif">${cells?Math.round(ok/cells*100):100}%</b><span class="m">of required fields filled · ${open} open or planned (excluded from stats) · ${nor} without valid planned risk (excluded from R) · ${nrv} closed without review</span></div><p>${Object.entries(ms).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="tag">${k}: ${v}</span>`).join("")||'<span class="m">No missing required fields.</span>'}</p>${bad.slice(0,6).map(([t,b])=>`<div><a href="#" onclick="ed=D.find(x=>x.id==${t.id});tab='log';go();return false">${esc(t.date||"no date")} ${esc(t.pair||"?")} ${esc(t.dir||"")}</a> <span class="m">· ${b} missing</span></div>`).join("")}</div>`}
-function dash(){const s=stats(V),Rs=V.filter(t=>t.R!=null).map(t=>t.R),c=cv(Rs),mo=[...new Set(V.map(t=>t.mo))],mv=mo.map(x=>V.filter(t=>t.mo==x).reduce((p,t)=>p+t.net,0)),E=[-2,-1,0,1,2,3],hb=Array(7).fill(0);Rs.forEach(x=>hb[E.filter(e=>x>=e).length]++);
-const U=k=>[...new Set(D.map(t=>t[k]).filter(Boolean))].sort(),S=(k,l)=>`<label>${l}<select onchange="flt.${k}=this.value;go()"><option value="">All</option>${U(k).map(x=>`<option${flt[k]==x?" selected":""}>${esc(x)}</option>`).join("")}</select></label>`,T=(k,l)=>`<label>${l}<input type="date" value="${flt[k]||""}" onchange="flt.${k}=this.value;go()"></label>`;
-return`<div class="card fl" style="margin-bottom:12px">${T("from","From")}${T("to","To")}${S("pair","Market")}${S("setup","Setup")}${S("dir","Direction")}${S("tf","Timeframe")}<button onclick="flt={};go()">Reset filters</button></div>`
-+(s.n<30?`<div class="warn">⚠ ${s.n} closed trade${s.n==1?"":"s"} in view. Win rate, expectancy and profit factor are unstable below about 30 trades. These figures describe past trades only and are not forecasts.</div>`:"")
-+`<div class="k">${kp("Net P&L",fm(s.net),"after fees · "+s.n+" trades",cl(s.net))}${kp("Total R",fr(s.R),s.nr+" trades with valid R",cl(s.R))}${kp("Win rate",fp(s.wr),s.w+" wins · "+s.l+" losses")}${kp("Avg win / loss",fm(s.aw)+" / "+fm(s.al==null?null:-s.al),"payoff ratio "+(s.aw&&s.al?(s.aw/s.al).toFixed(2):"–"))}${kp("Expectancy",fr(s.ex),"per trade · "+fm(s.n?s.net/s.n:null)+" average",cl(s.ex))}${kp("Profit factor",s.pf===Infinity?"∞":s.pf==null?"–":s.pf.toFixed(2),"gross wins ÷ gross losses")}${kp("Max drawdown",fr(s.ddR),fm(s.ddD)+" in dollars","neg")}</div>`
-+`<div class="g"><div class="card"><h3>Cumulative R (by trade)</h3>${line(c.e,"--a")}</div><div class="card"><h3>Drawdown from peak (R)</h3>${line(c.d,"--r")}</div></div>`
-+`<div class="g"><div class="card"><h3>Net $ by month</h3>${mv.length?bars(mo,mv):'<p class="m">No data yet.</p>'}</div><div class="card"><h3>R distribution (bucket start, in R)</h3>${bars(["<-2","-2","-1","0","1","2","≥3"],hb,["--r","--r","--r","--g","--g","--g","--g"])}</div></div>`
-+cal()+`<div class="g">${[["Monthly performance","mo"],["By setup","setup"],["By market","pair"],["By direction","dir"],["By timeframe","tf"],["By session","ses"],["Plan adherence","adh"],["Emotional state","emo"]].map(([a,b])=>brk(a,b)).join("")}</div>`+dq()}
-const setups=()=>[...new Set(["Breakout","Pullback","Range fade","Liquidity sweep",...D.map(t=>t.setup).filter(Boolean)])];
-function formH(t){return`<datalist id="sl">${setups().map(x=>`<option>${esc(x)}</option>`).join("")}</datalist>`+SECT.map((s,i)=>`<fieldset><legend>${s}</legend><div class="fg">${F.filter(f=>f[4]==i).map(([k,l,ty,rq])=>{const v=t[k]??"",L=`<label${ty=="area"?' class="w"':""}>${l}${rq?"<b>*</b>":""}`;return ty=="sel"?L+`<select id="f_${k}"><option value="">–</option>${SEL[k].map(o=>`<option${o==v?" selected":""}>${o}</option>`).join("")}</select></label>`:ty=="area"?L+`<textarea id="f_${k}" rows="2">${esc(v)}</textarea></label>`:L+`<input id="f_${k}" type="${TP[ty]}" ${ty=="num"?'step="any"':""} ${ty=="dl"?'list="sl"':""} value="${esc(v)}"></label>`}).join("")}</div></fieldset>`).join("")}
-function saveT(){const t={id:ed.id||Date.now()};F.forEach(f=>t[f[0]]=$("#f_"+f[0]).value.trim());D=D.filter(x=>x.id!=t.id).concat(t);sv();ed=null;go()}
-const delT=id=>{D=D.filter(x=>x.id!=id);sv();ed=null;go()},sl=t=>{const a=n(t.ae),p=n(t.pe);return a==null||p==null?"–":+(t.dir=="Short"?p-a:a-p).toFixed(5)};
-function log(){if(ed)return`<div class="card"><h3>${ed.id?"Edit trade":"New trade"} · fields marked * are required for a complete record</h3>${formH(ed)}<div class="fl"><button class="pri" onclick="saveT()">Save trade</button><button onclick="ed=null;go()">Cancel</button>${ed.id?`<button onclick="if(this.dataset.c)delT(${ed.id});else{this.dataset.c=1;this.textContent='Click again to delete'}">Delete</button>`:""}</div></div>`;
-const A=D.map(enrich).sort((a,b)=>((b.date||"")+(b.time||"")).localeCompare((a.date||"")+(a.time||"")));return`<div class="fl" style="margin-bottom:12px"><button class="pri" onclick="ed={date:today(),time:new Date().toTimeString().slice(0,5)};go()">New trade</button><span class="m">${A.length} records · click a row to edit · blank gross P&L means open or planned</span></div><div class="card sc"><table><tr><th>Date</th><th>Market</th><th>Dir</th><th>Setup</th><th>TF</th><th>Net $</th><th>R</th><th>Slippage</th><th>Review</th></tr>${A.map(t=>`<tr data-i onclick="ed=D.find(x=>x.id==${t.id});go()"><td>${esc(t.date||"–")} ${esc(t.time||"")}</td><td>${esc(t.pair||"–")}</td><td>${esc(t.dir||"–")}</td><td>${esc(t.setup||"–")}</td><td>${esc(t.tf||"–")}</td><td class="${cl(t.net)}">${fm(t.net)}</td><td class="${cl(t.R)}">${fr(t.R)}</td><td>${sl(t)}</td><td>${t.closed?t.adh&&t.lesson?"done":"pending":"open"}</td></tr>`).join("")||'<tr><td class="m">No trades yet. Add your first plan with New trade.</td></tr>'}</table></div>`}
-const CH=["Checked high-impact news and session times","Wrote market context (levels, bias) as notes, not signals","Set max daily loss and max trades","Every planned trade has thesis, stop and risk logged before entry","All trades closed out with fees and screenshot logged","Rated plan adherence and emotion on each trade","Wrote one lesson or follow-up","Stopped at my limits with no revenge trades"],WQ=["Which patterns repeated (setups, sessions, emotions)?","Best-executed trade: what made it good?","Biggest deviation: what triggered it?","ONE specific process change for next week","How will I check that change next week?"];
-const tg=i=>{(RS.chk[rd]??=[])[i]=!(RS.chk[rd]||[])[i];sv()},wkS=(w,i,v)=>{(RS.wk[w]??=[])[i]=v;sv()};
-function rev(){const d=new Date(rd+"T00:00"),o=(d.getDay()+6)%7,w0=ymd(new Date(d.getFullYear(),d.getMonth(),d.getDate()-o)),w1=ymd(new Date(d.getFullYear(),d.getMonth(),d.getDate()-o+6)),a=D.map(enrich).filter(t=>t.closed&&t.date>=w0&&t.date<=w1),s=stats(a),ck=RS.chk[rd]||[],W=RS.wk[w0]||[];
-return`<div class="g"><div class="card"><label>Date<input type="date" value="${rd}" onchange="rd=this.value||today();go()"></label><h3 style="margin-top:12px">Daily checklist for ${rd}</h3>${CH.map((x,i)=>`<label class="ck"><input type="checkbox" ${ck[i]?"checked":""} onchange="tg(${i})">&nbsp;${x}</label>`).join("")}</div><div class="card"><h3>Weekly review, week of ${w0}</h3><p class="m">Auto-summary: ${s.n} trades · ${fm(s.net)} · ${s.nr?fr(s.R):"–"} · plan followed on ${s.n?fp(a.filter(t=>t.adh=="Yes").length/s.n):"–"} of trades. Check the dashboard breakdowns by setup, session and emotion for patterns.</p>${WQ.map((q,i)=>`<label style="margin-bottom:8px">${q}<textarea rows="2" onchange="wkS('${w0}',${i},this.value)">${esc(W[i]||"")}</textarea></label>`).join("")}</div></div>`}
-const rst=()=>{try{const o=JSON.parse($("#bk").value);D=o.D;RS=o.RS||RS;sv();go()}catch(e){$("#bk").value="Could not read that backup text."}};
-const gd=()=>`<div class="card gd"><h3>Workflow</h3><ol><li>Before entry: New trade, fill Pre-trade plan, leave Gross P&L blank (the trade is “open”).</li><li>After close: add actual entry and exit, gross P&L from your broker, fees and swap, then the review.</li><li>The dashboard counts only closed trades (gross P&L filled) and updates from the log.</li></ol><h3>Metric formulas</h3><table><tr><td>Net P&L</td><td>Σ (Gross P&L − Fees + swap), per trade and in total</td></tr><tr><td>R per trade</td><td>Net P&L ÷ Planned risk ($). Costs are inside Net, so fees reduce R</td></tr><tr><td>Total R</td><td>Σ R over trades with valid R</td></tr><tr><td>Win rate</td><td>Trades with Net &gt; 0 ÷ closed trades (breakeven is not a win)</td></tr><tr><td>Avg win / loss</td><td>Mean Net of winners / mean Net of losers. Payoff ratio = avg win ÷ |avg loss|</td></tr><tr><td>Expectancy (R)</td><td>Total R ÷ trades with valid R, which equals win% × avg win R − loss% × avg loss R</td></tr><tr><td>Profit factor</td><td>Σ winning Net ÷ |Σ losing Net|</td></tr><tr><td>Max drawdown</td><td>Largest fall from a cumulative-R peak (peak starts at 0). The dollar figure uses cumulative Net P&L</td></tr><tr><td>Slippage</td><td>Long: actual entry − planned entry. Short: planned − actual. Positive means a worse fill</td></tr><tr><td>Plan adherence</td><td>Trades marked “Yes” ÷ closed trades</td></tr></table><h3 style="margin-top:12px">Rules</h3><ul><li><b>Partial exits:</b> keep one row per position. Gross = sum of every exit’s P&L, Actual exit = size-weighted average price, Fees = all commission and swap. Planned risk is the initial risk on the full position; do not shrink it when you move a stop.</li><li><b>Fees:</b> commission plus swap. Spread is already in your fills.</li><li><b>Missing data:</b> required fields (*) show in Data quality. Blank fees count as $0 until filled. No gross P&L means the trade is open and excluded.</li><li><b>Zero or blank planned risk:</b> R cannot be calculated, so the trade is excluded from R, expectancy, drawdown and the R histogram. It stays in dollar metrics and is flagged.</li><li><b>Small samples:</b> below about 30 trades overall and 20 per group, win rate, expectancy, profit factor and breakdowns are unreliable. History is a record, not a prediction.</li><li><b>Sessions:</b> pick one rule and keep it, for example Asia 00–08 UTC, London 08–16, New York 13–21, Overlap 13–16 (IST = UTC+5:30).</li><li><b>Storage:</b> data lives in this browser only. Back up often; clearing browser data erases it.</li></ul><h3>Backup</h3><textarea id="bk" rows="4"></textarea><div class="fl" style="margin-top:8px"><button onclick="$('#bk').value=JSON.stringify({D,RS})">Show backup text</button><button onclick="rst()">Restore from box</button></div></div>`;
-const TB=[["dash","Dashboard"],["log","Trade log"],["rev","Reviews"],["gd","Guide"]];
-function go(){V=view();$(".tb").innerHTML=TB.map(([k,l])=>`<button class="${k==tab?"pri":""}" onclick="tab='${k}';ed=null;go()">${l}</button>`).join("");$("#v").innerHTML={dash,log,rev,gd}[tab]()}
-go();
-</script></body></html>
+Conversation Log
+TradeVault ⚡ — Premium Institutional Trading Journal
+
+I have built TradeVault, a complete, fully functional, responsive trading journal web application engineered for funded-account, prop-firm, and institutional traders.
+
+The project has been created inside your default project directory at: 📁 C:/Users/kanna/.gemini/antigravity/scratch/tradevault
+
+TIP
+
+Recommended Action: Set C:\Users\kanna\.gemini\antigravity\scratch\tradevault as your active workspace in Antigravity so you can easily browse and manage all project files.
+
+🏗️ Architecture & What Was Built
+
+TradeVault runs on a high-performance Python backend with persistent SQLite storage, zero external runtime package dependencies required, and a responsive single-page fintech terminal interface.
+
+tradevault/
+├── app.py                     # High-performance server, RESTful router & static server
+├── database.py                # SQLite schema (ACID persistence, tables, indexes & seed data)
+├── analytics.py               # Quantitative math (expectancy, drawdown, profit factor, streaks)
+├── ai_extractor.py            # AI Vision screenshot extraction, OCR & duplicate detection
+├── ai_coach.py                # AI Trading Coach data-mining engine
+├── test_suite_direct.py       # Comprehensive integration test suite (100% passing)
+├── create_samples.py          # Script generating sample platform screenshots
+├── sample_screenshots/        # Bundled MT5, cTrader, and Prop-Firm test screenshots
+├── static/
+│   ├── index.html             # Institutional terminal single-page interface
+│   ├── css/
+│   │   └── style.css          # Premium dark terminal styling & print rules
+│   └── js/
+│       ├── app.js             # SPA router, global state & formatters
+│       ├── api.js             # REST API client
+│       ├── charts.js          # Interactive HTML5 Canvas charting engine
+│       ├── dashboard.js       # Dashboard view & interactive charts controller
+│       ├── trades.js          # Trades journal log, filtering, sorting, modals
+│       ├── import.js          # AI Screenshot Import controller
+│       ├── trade_form.js      # Manual trade form with live auto-math
+│       ├── calendar.js        # Monthly trading calendar & day inspector
+│       ├── strategies.js      # Strategy analytics & sample size badges
+│       ├── accounts.js        # Prop-firm challenge tracker
+│       ├── goals.js           # Goals & milestone progress controller
+│       ├── coach.js           # AI Trading Coach review view
+│       ├── reports.js         # CSV export, PDF print, JSON backup & restore
+│       └── settings.js        # Custom branding, currency, API key configuration
+├── .env.example               # Environment variables template
+├── run.bat                    # Windows 1-click startup script
+├── run.sh                     # Linux/Mac 1-click startup script
+└── README.md                  # Complete technical documentation
+🌟 Core Features Walkthrough (11 Full Pages)
+1. Dashboard
+Real Statistics: Net P/L, Gross profit & loss, Win rate, Winning/Losing/Break-even counts, Profit factor, Average win & loss, Average R-multiple, Expectancy per trade, Maximum drawdown (amount and % from peak high-watermark), Current account balance and equity, Win/loss streaks, Best and worst days.
+Interactive Canvas Charts:
+Cumulative Equity Curve with high-watermark peak line and shaded drawdown zones
+Daily Net P/L distribution bar chart
+Trading session breakdown (Asia, London, New York, London/NY Overlap)
+Instrument breakdown (XAUUSD, EURUSD, US30, NAS100, BTCUSD)
+Multi-Filter Bar: Filter dashboard analytics by account, strategy, session, instrument, and date range.
+2. AI Auto-Journal From P/L Screenshots (Core Feature)
+Multi-Platform Support: Upload screenshots from MetaTrader 4, MetaTrader 5, cTrader, TradingView, or prop-firm broker dashboards.
+Input Flexibility: Single or multiple screenshots, drag-and-drop, mobile or desktop captures (PNG, JPG, WebP).
+Vision AI + Heuristic OCR Engine: Uses Google Gemini (1.5/2.0 Flash) or OpenAI (GPT-4o) when an API key is configured, and includes a built-in heuristic pattern extractor that functions out of the box.
+Editable Preview Table: Inspect and edit every field inline (Ticket, Instrument, Direction, Lots, Entry, Exit, SL, TP, Net P/L, Close Time).
+Confidence Badges & Warning Chips: Low-confidence or missing fields (e.g. missing SL or ambiguous lot size) are flagged in orange/yellow.
+Smart Duplicate Detection: Cross-checks tickets, timestamps, instruments, and P/L against both existing database records and other screenshots uploaded in the same session.
+Screenshot Total Check: Compares total recognized trade P/L with the screenshot's displayed total.
+Instant Test Samples: One-click sample screenshot buttons to test extraction immediately.
+3. Trades Journal
+Full tabular trade log with sorting on every column (Ticket, Date, Instrument, Net P/L, R-Multiple).
+Filter by direction (BUY/SELL), outcome (Win, Loss, Break-Even), and session.
+Action Buttons:
+👁️ View Details Modal: Full execution confluences, entry/exit reasons, emotional state, discipline stars, and lessons.
+📋 Duplicate Trade: Clones a trade into the journal.
+🗑️ Delete Trade: Permanently deletes a trade with confirmation and balance recalculation.
+4. Manual Trade Entry Form
+Live real-time calculations:
+Auto-calculates Gross P/L, Net P/L (factoring commission & swap).
+Auto-calculates Risk Amount ($) and Risk % based on stop loss distance and lot size.
+Auto-calculates Planned R-Multiple and Actual R-Multiple.
+Qualitative logging: Session selector, Market condition, Setup type, Emotional state (Disciplined, FOMO, Anxious, Greedy), Discipline score (1–5 Stars), Mistakes checklist (Chasing, Early Exit, Moved SL, Revenge Trade), and Lessons.
+5. Strategy Analytics & Sample-Size Integrity
+Create custom strategies (e.g., ICT Liquidity Sweep, London Breakout, FVG Retest).
+Comparative metrics: Win rate, Net P/L, Profit factor, Average R-multiple, Trade count.
+Statistical Integrity Warning: Prominently displays sample-size reliability (Small Sample < 15 trades, Moderate Sample 15–35 trades, Robust Sample > 35 trades) so traders never label a strategy profitable based on insufficient data.
+6. Trading Calendar
+Monthly calendar grid with color-coded cells: green for net positive days, red for net negative days, and neutral for no-trade days.
+Trade count pills on each date.
+Day Inspector Modal: Click any day to view all trades executed on that date with direct view/edit shortcuts.
+Monthly summaries: Total Net P/L, Profitable Days, and Best Day.
+7. Prop-Firm Account Management
+Multi-account management for funded challenges (e.g. FTMO 100K, FundedNext 50K, IC Markets Live).
+Configurable rules: Starting balance, Profit target (%), Max daily loss (%), Max total drawdown (%).
+Supports Static Balance-Based, Equity-Based, and Trailing Drawdown calculations.
+Real-time progress meters: Distance to profit target, Remaining daily loss cushion, Remaining total drawdown allowance, and automated risk breach alerts.
+8. Goals & Milestones
+Set process and financial goals: Trades count, Monthly P/L target, Minimum discipline rating, Consecutive plan-following days, Challenge progress.
+Visual progress meters and a completed milestone archive.
+9. AI Trading Coach
+Data-mines your actual trade logs and notes:
+Financial Toll of Execution Leaks: Quantifies total dollars lost to specific mistakes (e.g., Chasing, Revenge Trading).
+Discipline vs P/L Correlation: Compares returns of 4–5 star discipline trades against lower discipline trades.
+Session & Emotional Edge: Identifies which sessions and mental states yield edge vs give back capital.
+Tailored Self-Review Questions: Generates targeted questions for the trader's weekend review grounded in their actual data.
+10. Reports & Data Export
+One-click Download CSV export.
+Printable PDF Performance Audit (@media print optimized layout for prop-firm compliance and physical binders).
+JSON Backup & Restore: Complete one-file database export and import.
+Reseed Demo Data: Instant reset to test analytics with realistic prop-firm trades.
+11. Settings & Customization
+Easy Rebranding: Change the application brand name from TradeVault to any name of your choice.
+Currency & Timezone: Select base currency (USD $, EUR €, GBP £, JPY ¥, AUD A$, CAD C$) and local timezone.
+Appearance: Toggle between Charcoal Terminal, Pitch Black OLED, and Slate Navy.
+AI Vision Configuration: Configure Google Gemini or OpenAI API keys securely on the server without client exposure.
+🚦 How to Run the Application
+1. Start the Server
+
+Open PowerShell or Command Prompt, navigate to the project directory, and run:
+
+powershell
+cd C:\Users\kanna\.gemini\antigravity\scratch\tradevault
+python app.py
+
+(Or simply double-click run.bat)
+
+2. Open in Your Browser
+
+Visit: 👉 http://localhost:8080
+
+The SQLite database at data/trades.db is automatically initialized and seeded with 19 realistic prop-firm challenge trades across multiple strategies, sessions, and accounts, so all charts and metrics are immediately populated.
+
+3. Verify Integration Tests
+
+All 11 in-memory integration tests can be verified at any time with:
+
+powershell
+python test_suite_direct.py
+🔑 AI Vision API Configuration
+In the app, open Settings from the left navigation menu.
+Under Vision AI Model Configuration, enter your Google Gemini API Key (from Google AI Studio
+) or OpenAI API Key.
+Click Save Settings. The key is stored securely in your local database and will be used whenever you upload screenshots on the AI Screenshot Import page.
+from where i can see website?
+
+The TradeVault application server is live and running right now!
+
+🌐 Open in Your Browser:
+
+Click or open this link in Chrome, Edge, Brave, or any browser: 👉 http://localhost:8080
+
+📂 How to Open or Start It in the Future:
+
+Whenever you restart your computer or want to launch TradeVault manually:
+
+Option 1: Double-Click the Launcher (Easiest)
+Open File Explorer to: 📁 C:/Users/kanna/.gemini/antigravity/scratch/tradevault
+Double-click run.bat.
+Open http://localhost:8080 in your browser.
+Option 2: From Terminal / PowerShell
+
+Open PowerShell and run:
+
+powershell
+cd C:\Users\kanna\.gemini\antigravity\scratch\tradevault
+python app.py
+AI pest in database is off?
+
+Depending on what you meant by "AI pest / paste / key in database is off", here is a clear explanation of how each part works and how to turn it on:
+
+1. If you meant: "Is the AI API Key in the database turned off / empty?"
+
+👉 Yes, by default no external AI API key is set yet.
+
+The app works in two modes:
+
+Built-in Local OCR Mode (Active now): You can upload screenshots immediately without needing any API key! The app uses a built-in pattern parser to recognize trades, check for duplicates, and let you edit them before saving.
+Live Google Gemini / OpenAI Vision Mode: To turn this on:
+Open the app at http://localhost:8080
+Click ⚙️ Settings in the left sidebar
+Enter your Google Gemini API Key (free from Google AI Studio
+) or OpenAI API Key
+Click Save Settings — this securely saves the key into your SQLite database.
+2. If you meant: "How do I paste (save) AI trades into the database?"
+
+To save trades extracted from screenshots permanently into your database:
+
+Go to ✨ AI Screenshot Import in the sidebar.
+Upload, drag & drop, or press Ctrl + V to paste any screenshot from your clipboard (e.g. after pressing Win + Shift + S).
+(Or click any of the 3 sample buttons like "Gold MT5 Trade" for an instant test).
+An Editable Preview Table will appear showing all detected trades. You can adjust any numbers or fix missing fields directly in the table.
+In the top dropdown, choose which Account to assign the trades to.
+Click the green button: "Confirm & Import to Journal".
+The trades are immediately saved to the SQLite database (data/trades.db).
+Your Dashboard, Equity Curve, Calendar, and Analytics will update automatically!
+3. Direct Clipboard Paste (Ctrl + V) is now active:
+
+You can take a screenshot of MetaTrader 4/5, TradingView, or cTrader using Windows Snipping Tool (Win + Shift + S), go to the AI Screenshot Import page, and simply press Ctrl + V to paste it directly!
+
+overall web is great but it feels emty and basic add better effects in it and UI
+
+I have given TradeVault a visual and UI overhaul to transform it into an institutional fintech trading terminal.
+
+🌟 What Has Been Enhanced:
+
+Fintech Glassmorphism & Ambient Mesh Aesthetics:
+
+Ambient Glows: Soft radial mesh gradients (rgba(59, 130, 246, 0.05) and rgba(16, 185, 129, 0.04)) subtle enough to prevent eye fatigue during long trading sessions.
+Glassmorphic Cards: High-translucency glass cards with top-edge specular highlights (inset 0 1px 0 rgba(255,255,255,0.1)).
+Micro-Interaction Hover Lifts: Cards subtly elevate (translateY(-2px)) with glowing shadows when hovered.
+
+Top Bar Live Market Sessions & UTC Radar:
+
+World Market Session Ticker: Displays real-time session indicators for London, New York, and Asia with animated pulsing green/blue/amber status dots.
+Live Rolling UTC Clock: Updates every second in tabular monospace font.
+
+Interactive Chart Crosshairs & Floating Tooltips:
+
+Hovering over the Equity Curve or Daily Net P/L chart reveals an interactive vertical crosshair and a glassmorphic floating tooltip displaying:
+Date and time of trade
+Running account balance & equity
+Exact trade ticket, instrument, direction, and trade net P/L.
+Enhanced glowing dual-gradient area underneath the equity curve and high-watermark peak line.
+
+Rich Content Density (No More Empty Spaces):
+
+Recent Journal Activity Feed: Added directly onto the dashboard to display your 5 most recently executed trades with status badges, R-multiples, and timestamps.
+Long vs Short Edge Matrix: Visual comparison bars comparing your win rate and profitability when buying (Long) vs selling (Short).
+Metric Cards Upgraded: Individual colored top accents, icon capsules, and total return percentage badges.
+
+AI Screenshot Import Terminal:
+
+Added supported platform badges (MT5, MT4, cTrader, TradingView, FTMO, FundedNext, Topstep).
+Scanner line animation effect on the drop zone.
+Direct Ctrl + V clipboard screenshot paste support.
+🌐 See It Live:
+
+Refresh your browser tab or open: 👉 http://localhost:8080
+
+link isnt working
+
+The server had stopped during the environment restart. I have restarted it and verified that it is running and responding.
+
+🌐 Open TradeVault:
+
+Click or open this link in your browser: 👉 http://localhost:8080
+
+🛠️ What Was Fixed:
+Server Restarted: The background server process is running and confirmed listening on port 8080.
+AI Batch Import Resiliency: Added fallback protection so when you confirm & save AI screenshot trades without manually selecting an account or strategy from the dropdown, it automatically assigns them to your primary active account without throwing a database error.
+High-Concurrency SQLite WAL Mode: Enabled Write-Ahead Logging (PRAGMA journal_mode = WAL) and 30-second busy timeouts to ensure database operations never lock under rapid clicking or multiple tab loads.
+localhost:8080 now can i publish it????
+
+Yes, you can publish TradeVault to the web! 🚀
+
+Depending on what you want to do, choose the method that suits you best:
+
+Option 1: Free 24/7 Cloud Hosting on Render (Recommended)
+
+This gives you a permanent, free https://your-app.onrender.com link accessible from your phone, laptop, or anywhere in the world 24/7.
+
+Upload your code to GitHub:
+Go to github.com
+ and create a new repository called tradevault.
+Click "uploading an existing file" and drag-and-drop all the files from: 📁 C:/Users/kanna/.gemini/antigravity/scratch/tradevault
+Deploy on Render (Free):
+Go to render.com
+ and create a free account.
+Click New + → Web Service → Select your GitHub tradevault repository.
+Configure these settings:
+Runtime: Python 3
+Build Command: (leave blank)
+Start Command: python app.py
+Instance Type: Free
+Click Create Web Service.
+Done! Render will deploy the app and give you a public URL (e.g., https://tradevault-xxxx.onrender.com) with free SSL/HTTPS.
+
+(I have already included render.yaml, Dockerfile, and Procfile in the project folder so Render and Railway configure automatically!)
+
+Option 2: Instant Public Link in 30 Seconds (No Sign-Up Needed)
+
+If you just want to test TradeVault on your phone or share it with a friend right now without setting up hosting:
+
+Open PowerShell or Command Prompt on your computer.
+Run this built-in SSH command to create an instant secure tunnel to your running server:
+powershell
+ssh -R 80:localhost:8080 a.pinggy.io
+(Or using Cloudflare tunnel: winget install Cloudflare.cloudflared then cloudflared tunnel --url http://localhost:8080)
+It will print a public HTTPS link (e.g. https://xxxx.pinggy.link) that you can open on your smartphone or share with anyone immediately!
+Option 3: Deploy with Docker on Any VPS (DigitalOcean / AWS / Hetzner)
+
+If you have a Linux VPS or cloud server:
+
+bash
+# 1. Copy the tradevault folder to your server
+# 2. Build the Docker container
+docker build -t tradevault .
+# 3. Run it with persistent database storage
+docker run -d -p 80:8080 -v /var/data/tradevault:/app/data --name tradevault tradevault
+💡 Before You Publish:
+Set Your Brand Name: Open Settings on your local dashboard and confirm the application name, default currency, and timezone you want as default.
+Save Backup: You can click Reports & Exports → Backup JSON to download a copy of all your saved trades anytime.
+ok give me file to uplode in github
+
+I have created a clean, GitHub-ready package for you with all source code, Dockerfile, deployment configs, and documentation:
+
+📦 Download / Access the Package:
+GitHub ZIP Archive: 👉 tradevault-github-ready.zip (or inside tradevault/tradevault-github-ready.zip)
+Direct Project Folder: 📁 C:/Users/kanna/.gemini/antigravity/scratch/tradevault
+🚀 How to Upload to GitHub in 3 Easy Steps (Under 1 Minute):
+Step 1: Create a Repository on GitHub
+Open your browser and go to github.com/new
+.
+Enter a repository name: tradevault.
+Choose Public or Private.
+Leave everything else unchecked (no README, no license).
+Click Create repository.
+Step 2: Upload the Files
+
+On the page that appears:
+
+Look for the sentence: "or push an existing repository... or uploading an existing file".
+Click uploading an existing file
+.
+Unzip tradevault-github-ready.zip and drag-and-drop all the files into the GitHub browser window. (Or drag the files directly from the tradevault folder).
+Step 3: Commit Changes
+Scroll down and click the green button: Commit changes.
+Done! Your TradeVault repository is now live on GitHub.
+🌐 Deploying to Render in 1 Click (After GitHub Upload):
+Go to render.com
+ and click New + → Web Service.
+Connect your newly created tradevault repository.
+Render will auto-detect the render.yaml & Dockerfile and deploy it immediately with free SSL!
+give me file path as text
+
+Here are the exact file paths as plain text for you to copy and paste:
+
+📦 ZIP File (for GitHub upload):
+text
+C:\Users\kanna\.gemini\antigravity\scratch\tradevault-github-ready.zip
+📁 Project Folder (all uncompressed files):
+text
+C:\Users\kanna\.gemini\antigravity\scratch\tradevault
+💡 Quick Tip to Open It in Windows:
+Press Win + R on your keyboard (opens the Run dialog).
+Paste the folder path: C:\Users\kanna\.gemini\antigravity\scratch
+Press Enter — File Explorer will open directly to your ZIP file and project folder.
+send me html code
+Your plan's baseline quota will refresh on 11/1/2026, 12:38:21 PM. Free users and Google AI Plus users receive the minimum base limits on Antigravity. You can upgrade to Google AI Pro or above to receive higher rate limits. See plans.
+"""
+TradeVault AI Trading Coach Engine
+Analyzes closed trades, journal notes, discipline ratings, emotional states,
+recurring mistakes, and risk deviations to provide objective, data-driven feedback.
+"""
+import json
+from collections import defaultdict
+from datetime import datetime
+def generate_coach_analysis(trades, strategies_map, accounts_map, api_key=None, ai_provider="gemini"):
+    """
+    Performs comprehensive quantitative pattern mining on actual trade history:
+    - Recurring mistake financial toll
+    - Discipline rating vs P/L correlation
+    - Emotional state outcome distribution
+    - Session and Instrument edge discovery
+    - Risk compliance & planned vs actual R-multiple execution
+    - Data-grounded self-review questions
+    """
+    sample_size = len(trades)
+    if sample_size == 0:
+        return {
+            "sample_size": 0,
+            "sample_note": "No trades recorded yet. Journal at least 10 trades to unlock AI Trading Coach analysis.",
+            "overall_summary": "Awaiting trade data to begin pattern recognition.",
+            "mistake_analysis": [],
+            "discipline_correlation": {},
+            "session_analysis": {},
+            "emotional_analysis": {},
+            "risk_compliance": {},
+            "coaching_questions": [
+                "What is your core setup and what specific market condition does it exploit?",
+                "What is your maximum permitted loss for a single trading day?"
+            ]
+        }
+    # 1. Sample Size Note
+    if sample_size < 15:
+        sample_note = f"Sample size: {sample_size} trades. (Early Sample: Patterns indicate current habits but have high statistical variance. Continue journaling to confirm true edge.)"
+    elif sample_size < 40:
+        sample_note = f"Sample size: {sample_size} trades. (Developing Sample: Sufficient to identify recurring behavioral leaks and session tendencies.)"
+    else:
+        sample_note = f"Sample size: {sample_size} trades. (Robust Sample: Statistically meaningful dataset for strategy and execution optimization.)"
+    # 2. Mistakes Financial Toll
+    mistake_stats = defaultdict(lambda: {"count": 0, "total_loss": 0.0, "trades": []})
