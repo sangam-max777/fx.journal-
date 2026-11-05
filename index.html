@@ -403,7 +403,7 @@ body.welcome-open{overflow:hidden}
   </section>
 
   <section class="page" id="page-add">
-    <div class="grid content-grid"><div class="card"><div class="card-title">Capture a trade</div><div class="card-sub" style="margin-bottom:18px">Choose the workflow that fits your review.</div><div class="mode-cards"><div class="mode-card" id="chooseAI"><div class="big">⌁</div><h3>AI screenshot review</h3><p>Upload chart or broker screenshots. Review extracted details, then confirm every field before saving.</p><span class="badge">ASSISTED CAPTURE</span></div><div class="mode-card" id="chooseManual"><div class="big">＋</div><h3>Manual entry</h3><p>Log trade details, your setup reasoning, emotions, and whether you followed your rules.</p><span class="badge neutral">FULL CONTROL</span></div></div><div class="notice">Screenshot interpretation in this standalone prototype is a guided demo, not a connected AI vision service. No values are silently invented or saved without confirmation.</div></div><div class="card"><div class="card-title">Your journal, your edge</div><div class="card-sub">Build useful data one honest trade at a time.</div><div style="margin-top:22px"><div class="settings-row"><span>Save screenshots with each trade</span><span class="positive">Available</span></div><div class="settings-row"><span>Record setup &amp; emotions</span><span class="positive">Available</span></div><div class="settings-row"><span>Performance analytics</span><span class="positive">Live</span></div><div class="settings-row"><span>AI vision API</span><span class="muted">Backend required</span></div><div class="settings-row"><span>Secure multi-user login</span><span class="muted">Backend required</span></div></div></div></div>
+    <div class="grid content-grid"><div class="card"><div class="card-title">Capture a trade</div><div class="card-sub" style="margin-bottom:18px">Choose the workflow that fits your review.</div><div class="mode-cards"><div class="mode-card" id="chooseAI"><div class="big">⌁</div><h3>AI screenshot review</h3><p>Upload chart or broker screenshots. Review extracted details, then confirm every field before saving.</p><span class="badge">ASSISTED CAPTURE</span></div><div class="mode-card" id="chooseManual"><div class="big">＋</div><h3>Manual entry</h3><p>Log trade details, your setup reasoning, emotions, and whether you followed your rules.</p><span class="badge neutral">FULL CONTROL</span></div></div><div class="notice">Screenshot review uses your connected AI backend. Sign in first; no values are saved without your confirmation.</div></div><div class="card"><div class="card-title">Your journal, your edge</div><div class="card-sub">Build useful data one honest trade at a time.</div><div style="margin-top:22px"><div class="settings-row"><span>Save screenshots with each trade</span><span class="positive">Available</span></div><div class="settings-row"><span>Record setup &amp; emotions</span><span class="positive">Available</span></div><div class="settings-row"><span>Performance analytics</span><span class="positive">Live</span></div><div class="settings-row"><span>AI vision API</span><span class="muted" id="apiStatus">Checking…</span></div><div class="settings-row"><span>Secure multi-user login</span><span class="muted" id="authStatus"><button type="button" class="filter" id="authBtn">Sign in</button></span></div></div></div></div>
   </section>
 
   <section class="page" id="page-playbook"><div class="grid content-grid"><div class="card"><div class="card-title">Trading rules</div><div class="card-sub">Define your process before the next session.</div><div id="rulesList" style="margin-top:14px"></div><div class="field" style="margin-top:16px"><label>Add a personal rule</label><div style="display:flex;gap:8px"><input id="newRule" placeholder="e.g. No setup = no trade" style="flex:1"><button class="btn primary" id="addRule">Add</button></div></div></div><div class="card"><div class="card-title">Pre-trade checklist</div><div class="card-sub">A repeatable process reduces impulsive decisions.</div><div id="checklist" style="margin-top:14px"></div></div></div></section>
@@ -681,4 +681,172 @@ renderCalendar();
   },true);
 })();
 </script>
+<script id="liquid-backend">
+/* LIQUID Journal ↔ Render backend. Edit only this block. No secrets belong here. */
+(function(){
+const API_BASE='https://fx-journal-1-v9q8.onrender.com';
+const EP={analyze:'/api/analyze',bulk:'/api/trades/bulk',list:'/api/trades',
+  login:['/api/auth/login','/api/login','/auth/login'],
+  register:['/api/auth/register','/api/register','/auth/register','/api/auth/signup','/api/signup']};
+const TK='liquid-journal-token-v1',UK='liquid-journal-user-v1';
+let token=localStorage.getItem(TK)||'',who=localStorage.getItem(UK)||'';
+const num=v=>{const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return Number.isFinite(n)?n:''};
+const pick=(o,...ks)=>{for(const k of ks){if(o&&o[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k]}return ''};
+
+async function req(path,o={}){
+  const h={...(o.headers||{})};
+  if(!(o.body instanceof FormData))h['Content-Type']='application/json';
+  if(token)h['Authorization']='Bearer '+token;
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),90000);
+  let r;
+  try{r=await fetch(API_BASE+path,{...o,headers:h,signal:ctl.signal})}
+  catch(e){clearTimeout(tm);const x=new Error(e.name==='AbortError'?'Server took too long (it may be waking up). Try again.':'Cannot reach the server (offline or blocked by CORS).');x.status=0;throw x}
+  clearTimeout(tm);
+  let d=null;try{d=await r.json()}catch(e){}
+  if(!r.ok){const x=new Error((d&&(d.error||d.message||d.detail))||('Request failed ('+r.status+')'));x.status=r.status;throw x}
+  return d||{};
+}
+async function tryPaths(paths,body){
+  let last;
+  for(const p of paths){try{return await req(p,{method:'POST',body:JSON.stringify(body)})}catch(e){last=e;if(e.status!==404&&e.status!==405)throw e}}
+  throw last||new Error('Auth endpoint not found');
+}
+
+/* status */
+async function ping(){
+  const el=$('#apiStatus');if(!el)return;
+  for(const p of ['/api/health','/health','/']){
+    try{await fetch(API_BASE+p);el.textContent='Connected';el.className='positive';return}catch(e){}
+  }
+  el.textContent='Offline';el.className='muted';
+}
+function authUI(){
+  const b=$('#authBtn'),s=$('#authStatus');if(!b||!s)return;
+  b.textContent=token?'Sign out':'Sign in';
+  s.firstChild&&s.firstChild!==b&&s.removeChild(s.firstChild);
+  if(token){s.insertBefore(document.createTextNode((who||'Signed in')+'  '),b);s.className='positive'}else s.className='muted';
+}
+
+/* auth modal (reuses existing modal styles) */
+const am=document.createElement('div');am.className='modal-backdrop';am.id='authModal';
+am.innerHTML='<div class="modal" style="max-width:420px"><div class="modal-head"><div><div class="eyebrow">ACCOUNT</div><h2 style="margin:4px 0 0;font-size:21px">Sign in</h2></div><button class="close" type="button" id="authClose">✕</button></div><div class="form-grid" style="grid-template-columns:1fr"><div class="field"><label>Email or username</label><input id="authUser" autocomplete="username"></div><div class="field"><label>Password</label><input id="authPass" type="password" autocomplete="current-password"></div></div><div class="tiny" id="authMsg" style="margin-top:10px;min-height:16px"></div><div style="display:flex;justify-content:flex-end;gap:9px;margin-top:16px"><button type="button" class="btn secondary" id="authReg">Create account</button><button type="button" class="btn primary" id="authGo">Sign in</button></div></div>';
+document.body.appendChild(am);
+const openAuth=m=>{am.classList.add('open');$('#authMsg').textContent=m||''};
+const closeAuth=()=>am.classList.remove('open');
+async function doAuth(reg){
+  const u=$('#authUser').value.trim(),p=$('#authPass').value;
+  if(!u||!p){$('#authMsg').textContent='Enter both fields.';return}
+  $('#authMsg').textContent='Please wait…';
+  try{
+    const body={email:u,username:u,password:p};
+    let d=await tryPaths(reg?EP.register:EP.login,body);
+    let t=pick(d,'token','access_token','jwt')||pick(d.data||{},'token','access_token');
+    if(!t&&reg){d=await tryPaths(EP.login,body);t=pick(d,'token','access_token','jwt')||pick(d.data||{},'token','access_token')}
+    if(!t)throw new Error('Signed in but no token was returned.');
+    token=t;who=u;localStorage.setItem(TK,t);localStorage.setItem(UK,u);
+    $('#authPass').value='';closeAuth();authUI();toast('Signed in.');syncDown();
+  }catch(e){$('#authMsg').textContent=e.message}
+}
+$('#authClose').onclick=closeAuth;$('#authGo').onclick=()=>doAuth(false);$('#authReg').onclick=()=>doAuth(true);
+$('#authBtn').onclick=()=>{if(token){token='';who='';localStorage.removeItem(TK);localStorage.removeItem(UK);authUI();toast('Signed out.')}else openAuth()};
+
+/* trade helpers */
+const fp=t=>[t.pair,t.direction,t.date,t.entry,t.exit,t.size].join('|');
+function norm(o){
+  const dir=String(pick(o,'direction','side','type','action'));
+  const t={pair:String(pick(o,'pair','symbol','instrument','ticker')).toUpperCase().replace(/[\/\s]/g,''),
+    direction:/sell|short/i.test(dir)?'Sell':/buy|long/i.test(dir)?'Buy':'',
+    entry:num(pick(o,'entry','entry_price','open_price')),sl:num(pick(o,'sl','stop_loss','stopLoss')),
+    tp:num(pick(o,'tp','take_profit','takeProfit')),exit:num(pick(o,'exit','exit_price','close_price')),
+    pnl:num(pick(o,'pnl','profit','profit_loss','net_pnl')),size:num(pick(o,'size','lots','volume','lot_size')),
+    timeframe:String(pick(o,'timeframe','tf')),reason:String(pick(o,'reason','notes','note','setup'))};
+  const d=String(pick(o,'date','trade_date','open_date','open_time','entry_time')),m=d.match(/\d{4}-\d{2}-\d{2}/);if(m)t.date=m[0];
+  const et=String(pick(o,'entryTime','entry_time','open_time')).match(/\d{2}:\d{2}/);if(et)t.entryTime=et[0];
+  const xt=String(pick(o,'exitTime','exit_time','close_time')).match(/\d{2}:\d{2}/);if(xt)t.exitTime=xt[0];
+  const oc=String(pick(o,'outcome','result'));if(/win|profit/i.test(oc))t.outcome='Win';else if(/loss|lose/i.test(oc))t.outcome='Loss';
+  Object.keys(t).forEach(k=>t[k]===''&&delete t[k]);return t;
+}
+function toList(d){
+  if(Array.isArray(d))return d;
+  for(const k of ['trades','results','extracted_trades','data','items']){const v=d&&d[k];if(Array.isArray(v))return v;if(v&&Array.isArray(v.trades))return v.trades}
+  if(d&&d.trade)return[d.trade];return d&&typeof d==='object'&&Object.keys(d).length?[d]:[];
+}
+function fillForm(t){
+  const f=$('#tradeForm').elements;
+  for(const k in t){if(!f[k])continue;
+    if(k==='pair'){const ok=[...f.pair.options].some(o=>o.value===t.pair||o.text===t.pair);if(ok)f.pair.value=t.pair;else{f.pair.value='Custom';f.customPair.value=t.pair}}
+    else f[k].value=t[k]}
+}
+function full(t){
+  const x={...t};x.id=crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random());
+  x.date=x.date||today();x.accountId='';x.images=[];x.pnl=x.pnl===undefined?0:x.pnl;
+  x.status=x.outcome||x.exit!==undefined?'Closed':'Open';x.outcome=x.outcome||(x.pnl>0?'Win':x.pnl<0?'Loss':'Open');
+  x.rr=calcRR(x);return x;
+}
+async function syncUp(list){
+  if(!token||!list.length)return;
+  try{await req(EP.bulk,{method:'POST',body:JSON.stringify({trades:list.map(t=>{const c={...t};delete c.images;return c})})})}
+  catch(e){e.status===401?(token='',localStorage.removeItem(TK),authUI(),toast('Session expired. Please sign in again.')):toast('Saved locally; sync failed: '+e.message)}
+}
+async function syncDown(){
+  try{
+    const d=await req(EP.list,{method:'GET'}),have=new Set(trades.map(fp));let n=0;
+    toList(d).forEach(o=>{const t=norm(o);if(!t.pair)return;const x={...o,...t,id:o.id||String(Date.now()+n),images:o.images||[],status:o.status||'Closed',outcome:t.outcome||o.outcome||'Open',pnl:t.pnl===undefined?0:t.pnl};x.rr=calcRR(x);if(!have.has(fp(x))){trades.push(x);have.add(fp(x));n++}});
+    const remote=new Set(toList(d).map(o=>fp(norm(o))));await syncUp(trades.filter(t=>!remote.has(fp(t))));
+    if(n){save();render()}
+  }catch(e){/* list endpoint optional */}
+}
+
+/* AI screenshot extraction */
+async function prep(f){
+  try{const b=await createImageBitmap(f),s=Math.min(1,1600/Math.max(b.width,b.height)),c=document.createElement('canvas');
+    c.width=Math.round(b.width*s);c.height=Math.round(b.height*s);c.getContext('2d').drawImage(b,0,0,c.width,c.height);
+    return{name:f.name,mime:'image/jpeg',b64:c.toDataURL('image/jpeg',.85).split(',')[1]}}
+  catch(e){const u=await new Promise((r,j)=>{const x=new FileReader();x.onload=()=>r(x.result);x.onerror=j;x.readAsDataURL(f)});return{name:f.name,mime:f.type,b64:u.split(',')[1]}}
+}
+async function analyze(files){
+  const im=await Promise.all(files.map(prep));
+  const body={images:im.map(i=>({name:i.name,mime_type:i.mime,data:i.b64})),image:im[0].b64,mime_type:im[0].mime,mode:im.length>1?'multi':'single'};
+  try{return await req(EP.analyze,{method:'POST',body:JSON.stringify(body)})}
+  catch(e){if(![400,415,422].includes(e.status))throw e;
+    const fd=new FormData();files.forEach(f=>['file','files','image','images'].forEach(k=>fd.append(k,f)));
+    return req(EP.analyze,{method:'POST',body:fd})}
+}
+$('#analyseBtn').onclick=async()=>{
+  if(!attachedFiles.length){toast('Upload at least one screenshot first.');return}
+  if(!token){openAuth('Sign in to use AI screenshot review.');return}
+  const st=$('#analysisStatus'),btn=$('#analyseBtn');btn.disabled=true;
+  st.textContent='Analysing… first request can take up to a minute while the server wakes.';
+  try{
+    const list=toList(await analyze([...attachedFiles])).map(norm).filter(t=>t.pair||t.entry!==undefined);
+    if(!list.length)throw new Error('No trade details could be read. Enter them manually.');
+    fillForm(list[0]);
+    const rep=$('#aiReport');rep.style.display='block';
+    const rows=list.map(t=>'<div class="report-item"><b>'+esc((t.pair||'?')+' '+(t.direction||''))+'</b><span>Entry '+esc(t.entry??'—')+' · SL '+esc(t.sl??'—')+' · TP '+esc(t.tp??'—')+(t.exit!==undefined?' · Exit '+esc(t.exit):'')+'</span></div>').join('');
+    rep.innerHTML='<div class="notice">AI extraction complete. Confirm every value below before saving; blank fields were not readable.</div><div class="report" style="margin-top:12px">'+rows+'</div>'+(list.length>1?'<div style="margin-top:12px"><button type="button" class="btn primary" id="saveAllAI">Save all '+list.length+' trades</button><div class="tiny" style="margin-top:6px">The first trade is loaded in the form. Duplicates are skipped.</div></div>':'');
+    st.textContent=list.length+' trade'+(list.length>1?'s':'')+' extracted · confirmation required';
+    if(list.length>1)$('#saveAllAI').onclick=async()=>{
+      const have=new Set(trades.map(fp)),add=[];
+      list.forEach(t=>{const x=full(t);if(!have.has(fp(x))){have.add(fp(x));add.push(x)}});
+      trades.push(...add);try{save()}catch(e){}
+      $('#tradeModal').classList.remove('open');go('dashboard');render();
+      toast(add.length+' saved'+(add.length<list.length?', '+(list.length-add.length)+' duplicate(s) skipped':'')+'.');
+      syncUp(add);
+    };
+  }catch(e){
+    st.textContent='';toast(e.message);
+    if(e.status===401){token='';localStorage.removeItem(TK);authUI();openAuth('Session expired. Please sign in again.')}
+  }finally{btn.disabled=false}
+};
+
+/* sync single saved trades */
+$('#tradeForm').addEventListener('submit',()=>{
+  const before=trades.length;let n=0;
+  const iv=setInterval(()=>{if(trades.length>before){clearInterval(iv);syncUp(trades.slice(before))}else if(++n>12)clearInterval(iv)},600);
+});
+
+authUI();ping();if(token)syncDown();
+})();
+</script>
+
 </body></html>
