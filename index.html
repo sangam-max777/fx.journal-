@@ -30,7 +30,7 @@ nav button{flex:1;background:none;border:0;color:var(--mut);padding:8px 2px;font
 </style></head><body>
 <div id="auth"><form id="authForm" class="card"><h1>LIQUID</h1><p class="m" id="sub"></p>
 <input id="nm" placeholder="Your name" autocomplete="name"><input id="em" type="email" placeholder="Email" required autocomplete="email"><input id="pw" type="password" placeholder="Password (8+ characters)" required autocomplete="current-password">
-<p class="r" id="aerr"></p><button class="btn" id="go" style="width:100%"></button><button type="button" class="link" id="sw"></button></form></div>
+<p class="r" id="aerr"></p><button class="btn" id="go" style="width:100%"></button><button type="button" class="btn ghost" id="guest" style="width:100%;margin-top:10px">Continue as guest</button><p class="m" style="margin:8px 0 0"><small>No sign-up needed. Guest data is deleted after 14 days of inactivity, and you can turn it into a full account anytime.</small></p><button type="button" class="link" id="sw"></button></form></div>
 <div id="app"><nav id="nav"></nav><main id="main"></main></div><div id="toast" role="status"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -45,6 +45,7 @@ async function api(p,o={}){const r=await fetch(API+p,{method:o.m||'GET',headers:
 let mode='in';
 function setMode(m){mode=m;const i=m==='in';$('#nm').style.display=i?'none':'block';$('#sub').textContent=i?'Sign in to your journal.':'Create your journal. Your data stays private to you.';$('#go').textContent=i?'Sign in':'Create account';$('#sw').textContent=i?'New here? Create an account':'Have an account? Sign in';$('#pw').autocomplete=i?'current-password':'new-password';$('#aerr').textContent=''}
 $('#sw').onclick=()=>setMode(mode==='in'?'up':'in');
+$('#guest').onclick=async()=>{$('#guest').disabled=true;$('#aerr').textContent='';try{const d=await api('/api/auth/guest',{m:'POST'});S.tok=d.token;localStorage.setItem('lq_t',d.token);boot()}catch(x){$('#aerr').textContent=x.message}$('#guest').disabled=false};
 $('#authForm').onsubmit=async e=>{e.preventDefault();$('#go').disabled=true;$('#aerr').textContent='';
  try{const d=await api('/api/auth/'+(mode==='in'?'login':'register'),{m:'POST',b:{email:$('#em').value,password:$('#pw').value,name:$('#nm').value}});S.tok=d.token;localStorage.setItem('lq_t',d.token);boot()}
  catch(x){$('#aerr').textContent=x.message}$('#go').disabled=false};
@@ -87,12 +88,12 @@ cal(){const y=S.cal.getFullYear(),mo=S.cal.getMonth(),m=days(list()),f=new Date(
 ins(){const ts=list(),m={};ts.forEach(t=>{const x=m[t.symbol]??={n:0,w:0,p:0};x.n++;x.w+=t.pnl>0?1:0;x.p+=t.pnl});const k=Object.keys(m).sort((a,b)=>m[b].p-m[a].p);
  return`<div class="card"><h3>By instrument</h3>${k.length?`<div class="tw"><table><tr><th>Symbol</th><th>Trades</th><th>Win rate</th><th>Net P/L</th></tr>${k.map(s=>`<tr><td><b>${esc(s)}</b></td><td>${m[s].n}</td><td>${(m[s].w/m[s].n*100).toFixed(0)}%</td><td class="${m[s].p>=0?'g':'r'}">${money(m[s].p)}</td></tr>`).join('')}</table></div>`:'<p class="m">No data yet.</p>'}</div>
  <div class="card"><h3>AI coach</h3><p class="m">Reads your last 60 trades and flags habits like overtrading and revenge entries.</p><button class="btn" id="coachBtn" data-act="coach">Review my trading</button>${S.coach?`<p style="white-space:pre-wrap;margin-top:14px">${esc(S.coach)}</p>`:''}</div>`},
-set(){return`<div class="card"><h3>Profile</h3><p>${esc(S.user.name)}<br><span class="m">${esc(S.user.email)}</span></p><label class="m" for="cur">Display currency (label only)</label><select id="cur">${['USD','INR','EUR','GBP'].map(c=>`<option ${c===S.cur?'selected':''}>${c}</option>`).join('')}</select></div>
+set(){return`${S.user.guest?`<form id="ug" class="card"><h3>Save your account</h3><p class="m">Add an email and password to keep your trades permanently and remove the AI limit.</p><input name="name" placeholder="Your name" autocomplete="name"><input name="email" type="email" placeholder="Email" required autocomplete="email"><input name="password" type="password" placeholder="Password (8+ characters)" minlength="8" required autocomplete="new-password"><button class="btn">Create account and keep my data</button></form>`:''}<div class="card"><h3>Profile</h3><p>${esc(S.user.name)}<br><span class="m">${esc(S.user.email||'Not saved yet')}</span></p><label class="m" for="cur">Display currency (label only)</label><select id="cur">${['USD','INR','EUR','GBP'].map(c=>`<option ${c===S.cur?'selected':''}>${c}</option>`).join('')}</select></div>
  <div class="card"><h3>Accounts</h3>${S.accts.map(a=>`<p>${esc(a.name)} <button class="x" data-act="dela" data-v="${a.id}" aria-label="Delete account">✕</button></p>`).join('')||'<p class="m">No accounts yet. Add one to separate demo, live or prop trades.</p>'}<form id="af" style="display:flex;gap:8px"><input name="name" placeholder="Account name" required style="margin:0"><button class="btn">Add</button></form></div>
  <div class="card"><h3>Your data</h3><button class="btn ghost" data-act="exp">Export CSV</button> <button class="btn red" data-act="wipe">Delete all trades</button></div><button class="btn ghost" data-act="out" style="width:100%">Sign out</button>`}};
 const NAV=[['dash','▦','Home'],['trades','↕','Trades'],['add','＋','Add'],['cal','▤','Calendar'],['ins','◔','Insights'],['set','⚙','Settings']];
 function draw(){const t=NAV.find(n=>n[0]===S.view);$('#nav').innerHTML=NAV.map(n=>`<button class="${n[0]===S.view?'on':''}" data-act="go" data-v="${n[0]}"><span>${n[1]}</span>${n[2]}</button>`).join('');
- $('#main').innerHTML=`<div class="top"><h1>${t[2]==='Home'?'Dashboard':t[2]}</h1><select id="acct" aria-label="Account"><option value="all">All accounts</option>${S.accts.map(a=>`<option value="${a.id}" ${a.id===S.acct?'selected':''}>${esc(a.name)}</option>`).join('')}</select></div>`+V[S.view]()}
+ $('#main').innerHTML=`<div class="top"><h1>${t[2]==='Home'?'Dashboard':t[2]}</h1><select id="acct" aria-label="Account"><option value="all">All accounts</option>${S.accts.map(a=>`<option value="${a.id}" ${a.id===S.acct?'selected':''}>${esc(a.name)}</option>`).join('')}</select></div>`+(S.user.guest&&S.view!=='set'?'<div class="card" style="display:flex;justify-content:space-between;gap:12px;align-items:center"><span><b>Guest account</b><br><small class="m">Deleted after 14 idle days. AI limited to 5 uses.</small></span><button class="btn" data-act="go" data-v="set">Save it</button></div>':'')+V[S.view]()}
 
 /* ---- actions ---- */
 const shrink=f=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=Math.min(1,2000/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);ok({mime:'image/jpeg',data:c.toDataURL('image/jpeg',.85).split(',')[1]})};i.onerror=()=>no(new Error('Could not open that image.'));i.src=URL.createObjectURL(f)});
@@ -111,12 +112,13 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-act]
   else if(a==='exp'){const csv=['symbol,side,lots,entry,exit,pnl,date,note',...S.trades.map(t=>[t.symbol,t.side,t.lots,t.entry,t.exit,t.pnl,t.date,'"'+(t.note||'').replace(/"/g,'""')+'"'].join(','))].join('\n');
    const l=document.createElement('a');l.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));l.download='liquid-trades.csv';l.click()}
   else if(a==='wipe'){if(confirm('Delete every trade? This cannot be undone.')){await api('/api/trades',{m:'DELETE'});await load();draw();toast('All trades deleted.')}}
-  else if(a==='out')out();
+  else if(a==='out'){if(!S.user.guest||confirm('Guest data cannot be recovered after signing out. Sign out anyway? (Cancel, then save your account first.)'))out()}
  }catch(x){toast(x.message)}});
 document.addEventListener('submit',async e=>{e.preventDefault();const f=e.target;
  try{
   if(f.id==='mf'){const d=Object.fromEntries(new FormData(f));await addTrades([d]);f.reset();draw()}
   if(f.id==='af'){await api('/api/accounts',{m:'POST',b:{name:f.name.value}});await load();draw()}
+  if(f.id==='ug'){S.user=(await api('/api/auth/upgrade',{m:'POST',b:Object.fromEntries(new FormData(f))})).user;toast('Account saved. Your trades are safe.');draw()}
  }catch(x){toast(x.message)}});
 document.addEventListener('change',e=>{if(e.target.id==='acct'){S.acct=e.target.value;draw()}if(e.target.id==='cur'){S.cur=e.target.value;localStorage.setItem('lq_c',S.cur);draw()}});
 boot();
