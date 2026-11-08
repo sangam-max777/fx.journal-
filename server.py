@@ -627,7 +627,7 @@ class LiquidRequestHandler(SimpleHTTPRequestHandler):
             self.handle_health()
             return
 
-        if path == "/api/auth/me":
+        if path in ("/api/auth/me", "/api/me"):
             user = self.get_current_user()
             if not user:
                 self.send_json(401, {"error": "Not authenticated"})
@@ -664,7 +664,7 @@ class LiquidRequestHandler(SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
-        if path == "/api/auth/signup":
+        if path in ("/api/auth/signup", "/api/auth/register"):
             body = self.read_json_body()
             email = body.get("email", "")
             password = body.get("password", "")
@@ -676,6 +676,36 @@ class LiquidRequestHandler(SimpleHTTPRequestHandler):
                 self.send_json(201, {"success": True, "token": token, "user": user})
             except ValueError as e:
                 self.send_json(400, {"error": str(e)})
+            return
+        if path == "/api/auth/guest":
+            try:
+                guest_id = base64.urlsafe_b64encode(
+                    os.urandom(18)
+                ).decode("ascii").rstrip("=")
+
+                guest_email = f"guest+{guest_id}@liquid.local"
+
+                user = db.create_user(
+                    guest_email,
+                    guest_id,
+                    "Guest",
+                    "USD"
+                )
+
+                token = db.create_session(user["id"])
+                user["guest"] = True
+
+                self.send_json(201, {
+                    "success": True,
+                    "token": token,
+                    "user": user
+                })
+
+            except Exception:
+                self.send_json(500, {
+                    "error": "Could not start guest session. Please try again."
+                })
+
             return
 
         if path == "/api/auth/login":
